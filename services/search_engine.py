@@ -55,13 +55,21 @@ class SearchEngine:
         """Apply skill-based search to the query"""
         from sqlalchemy import func
         
+        if not skill_terms:
+            return query
+        
+        # Build OR conditions for all skill terms
+        skill_filters = []
         for term in skill_terms:
-            query = query.join(Candidate.skills).filter(
+            skill_filters.append(
                 or_(
                     func.lower(Skill.name).like(f"%{term}%"),
                     func.lower(Skill.normalized_name).like(f"%{term}%")
                 )
             )
+        
+        # Join and apply OR filter
+        query = query.join(Candidate.skills).filter(or_(*skill_filters))
         
         return query.distinct()
     

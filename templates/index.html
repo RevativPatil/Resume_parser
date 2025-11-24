@@ -3,42 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Resume Screening</title>
+    <title>AI Resume Screening - HR Dashboard</title>
     <link href="/static/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🤖 AI Resume Screening</h1>
-        <p class="subtitle">Automated Resume Screening for HR Teams</p>
-        
-        <div class="upload-section">
-            <h2>📄 Upload Resume</h2>
-            <form id="uploadForm" enctype="multipart/form-data">
-                <div class="file-input-wrapper">
-                    <input type="file" id="resumeFile" name="file" accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg">
-                    <label for="resumeFile" class="file-label">Choose file (pdf,docs)</label>
+    <div class="main-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                    <h1>AI Resume Screening</h1>
                 </div>
-                <button type="submit" class="upload-btn">SUBMIT</button>
-            </form>
-            <div id="uploadStatus"></div>
-        </div>
-        
-        <div class="search-section">
-            <h2>🔍 Search Candidates</h2>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Enter skills (e.g., Python, React, AWS, Docker)">
-                <button onclick="searchCandidates()" class="search-btn">Search</button>
+                <p class="subtitle">Automated Resume Screening for HR Teams</p>
             </div>
-            <div id="searchResults"></div>
+        </header>
+
+        <!-- Top Section: Upload & Resume Library -->
+        <div class="top-section">
+            <!-- Upload Resume Section -->
+            <div class="card upload-card">
+                <div class="card-header">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h2>Upload Resume</h2>
+                </div>
+                <div class="card-body">
+                    <p class="upload-desc">Upload candidate resumes in PDF, DOC, or DOCX format</p>
+                    
+                    <div class="dropzone" id="dropzone">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p class="upload-text">Drag and drop your resume here</p>
+                        <p class="upload-subtext">or <span class="browse-link" id="browseLink">click to browse</span></p>
+                        <p class="upload-format">Supports PDF, DOC, DOCX (Max 10MB)</p>
+                        <input type="file" id="resumeFile" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" hidden>
+                    </div>
+                    
+                    <div class="selected-file" id="selectedFile" style="display: none;">
+                        <i class="fas fa-file-alt"></i>
+                        <span id="fileName"></span>
+                        <button class="remove-file" id="removeFile"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <button class="btn btn-submit" id="submitBtn">
+                        <i class="fas fa-check"></i> Submit Resume
+                    </button>
+                    
+                    <div id="uploadStatus"></div>
+                </div>
+            </div>
+
+            <!-- Resume Library Section -->
+            <div class="card library-card">
+                <div class="card-header">
+                    <i class="fas fa-folder-open"></i>
+                    <h2>Resume Library</h2>
+                </div>
+                <div class="card-body">
+                    <p class="upload-desc">View and manage submitted resumes</p>
+                    
+                    <div class="search-group">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="skillSearch" class="search-input" placeholder="Search skills...">
+                        <button class="btn btn-search" id="searchBtn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                    
+                    <div class="select-resume-label">Select Resume to View</div>
+                    <select id="resumeSelect" class="resume-select">
+                        <option value="">Choose a resume...</option>
+                    </select>
+                    
+                    <div id="searchResults" class="search-results"></div>
+                    
+                    <button class="btn btn-display" id="displayResumeBtn">
+                        <i class="fas fa-eye"></i> Display Selected Resume
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="candidates-section">
-            <h2>👥 All Candidates</h2>
-            <button onclick="loadAllCandidates()" class="load-btn">Load All Candidates</button>
-            <div id="allCandidates"></div>
+        <!-- Bottom Section: Document Viewer & Extracted Info -->
+        <div class="bottom-section">
+            <!-- Document Viewer -->
+            <div class="card viewer-card">
+                <div class="card-header">
+                    <i class="fas fa-file-pdf"></i>
+                    <h2>Document Viewer</h2>
+                </div>
+                <div class="card-body">
+                    <div id="documentViewer" class="document-viewer">
+                        <div class="no-document">
+                            <i class="fas fa-file-alt empty-icon"></i>
+                            <p>No document selected</p>
+                            <p class="empty-subtext">Select a resume from the list to view it here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extracted Info -->
+            <div class="card info-card">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i>
+                    <h2>Extracted Info</h2>
+                </div>
+                <div class="card-body">
+                    <div id="extractedInfo" class="extracted-info">
+                        <div class="no-info">
+                            <i class="fas fa-user-circle empty-icon"></i>
+                            <p>No candidate selected</p>
+                            <p class="empty-subtext">Upload or select a resume to view extracted information</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Processing resume...</p>
+    </div>
+
     <script src="/static/script.js"></script>
 </body>
 </html>

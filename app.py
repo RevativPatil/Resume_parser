@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 import os
 import shutil
@@ -95,6 +95,108 @@ async def search_candidates(
             "count": len(results)
         }
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/resumes")
+async def get_all_resumes(db: Session = Depends(get_db)):
+    """Get all resume names for dropdown"""
+    try:
+        candidates = db.query(Candidate).all()
+        return {
+            "success": True,
+            "resumes": [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "email": c.email,
+                    "filename": os.path.basename(c.resume_file_path) if c.resume_file_path else ""
+                } for c in candidates
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/resume/{candidate_id}")
+async def get_resume_details(candidate_id: int, db: Session = Depends(get_db)):
+    """Get detailed information for a specific candidate"""
+    try:
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        return {
+            "success": True,
+            "candidate": {
+                "id": candidate.id,
+                "name": candidate.name,
+                "email": candidate.email,
+                "phone": candidate.phone,
+                "location": candidate.location,
+                "experience_summary": candidate.experience_summary,
+                "skills": [{"name": s.name, "category": s.category} for s in candidate.skills],
+                "education": [
+                    {
+                        "degree": e.degree,
+                        "institution": e.institution,
+                        "year": e.year,
+                        "field_of_study": e.field_of_study
+                    } for e in candidate.education
+                ],
+                "experience": [
+                    {
+                        "job_title": e.job_title,
+                        "company": e.company,
+                        "duration": e.duration,
+                        "description": e.description,
+                        "start_date": e.start_date,
+                        "end_date": e.end_date
+                    } for e in candidate.experiences
+                ],
+                "resume_file_path": candidate.resume_file_path,
+                "filename": os.path.basename(candidate.resume_file_path) if candidate.resume_file_path else ""
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/resume/file/{candidate_id}")
+async def get_resume_file(candidate_id: int, db: Session = Depends(get_db)):
+    """Serve the resume file for viewing"""
+    try:
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate or not candidate.resume_file_path:
+            raise HTTPException(status_code=404, detail="Resume file not found")
+        
+        if not os.path.exists(candidate.resume_file_path):
+            raise HTTPException(status_code=404, detail="Resume file not found on disk")
+        
+        file_extension = os.path.splitext(candidate.resume_file_path)[1].lower()
+        
+        media_types = {
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.txt': 'text/plain',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg'
+        }
+        
+        media_type = media_types.get(file_extension, 'application/pdf')
+        
+        return FileResponse(
+            candidate.resume_file_path,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{os.path.basename(candidate.resume_file_path)}"',
+                "Cache-Control": "no-cache"
+            }
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -202,5 +304,5 @@ if __name__ == "__main__":
     print(" Starting Resume Parser Server...")
     print(" Database URL:", settings.DATABASE_URL)
     print(" Groq Model:", settings.GROQ_MODEL)
-    print(" Server will be available at: http://localhost:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    print(" Server will be available at: http://0.0.0.0:5000")
+    uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info")

@@ -12,3 +12,17 @@ groq
 jinja2
 aiofiles
 python-dotenv
+aiofiles
+alembic
+fastapi
+groq
+jinja2
+pdfplumber
+pillow
+psycopg2-binary
+pytesseract
+python-docx
+python-dotenv
+python-multipart
+sqlalchemy
+uvicorn
