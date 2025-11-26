@@ -464,13 +464,6 @@ Get your API key: https://console.groq.com/
 
 ## 🚀 Deployment
 
-### Deploy to Replit
-
-1. Push code to Replit
-2. Configure environment variables in Secrets tab
-3. Click "Deploy" button
-4. Choose "Autoscale" for automatic scaling
-
 ### Deploy Locally with Gunicorn
 
 ```bash
@@ -569,13 +562,3 @@ This project is licensed under the MIT License.
 - [ ] Interview scheduling integration
 - [ ] Machine learning-based smart matching
 - [ ] Multi-language resume support
-
----
-
-## 📧 Support
-
-For issues, questions, or suggestions, please open an issue on GitHub or contact the development team.
-
----
-
-**Made with ❤️ for HR Teams**
