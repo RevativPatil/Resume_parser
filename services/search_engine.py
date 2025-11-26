@@ -45,15 +45,18 @@ class SearchEngine:
         results = []
         for candidate in candidates:
             match_percentage = self._calculate_match_percentage(candidate, skill_terms if query else [])
-            results.append({
-                "id": candidate.id,
-                "name": candidate.name,
-                "email": candidate.email,
-                "key_skills": [skill.name for skill in candidate.skills[:10]],
-                "experience_summary": candidate.experience_summary,
-                "match_percentage": match_percentage,
-                "resume_file_path": candidate.resume_file_path
-            })
+            
+            # Filter: Only include candidates with at least 70% match
+            if match_percentage >= 70:
+                results.append({
+                    "id": candidate.id,
+                    "name": candidate.name,
+                    "email": candidate.email,
+                    "key_skills": [skill.name for skill in candidate.skills[:10]],
+                    "experience_summary": candidate.experience_summary,
+                    "match_percentage": match_percentage,
+                    "resume_file_path": candidate.resume_file_path
+                })
         
         # Sort by match percentage
         results.sort(key=lambda x: x["match_percentage"], reverse=True)
@@ -221,7 +224,8 @@ class SearchEngine:
             total_required = len(required_skills)
             match_percentage = int((match_count / total_required) * 100) if total_required > 0 else 0
             
-            if match_percentage > 0:
+            # Filter: Only include candidates with at least 70% match
+            if match_percentage >= 70:
                 results.append({
                     "id": candidate.id,
                     "name": candidate.name,
