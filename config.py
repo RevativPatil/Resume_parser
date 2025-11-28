@@ -5,7 +5,7 @@ load_dotenv()
 
 class Settings:
     # Database
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/resume_parser")
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./resume_parser.db")
     
     # Groq API Configuration
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

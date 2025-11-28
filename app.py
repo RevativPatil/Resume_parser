@@ -249,6 +249,35 @@ async def search_by_job_role(role: str, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/shortlisted")
+async def get_shortlisted_candidates():
+    """Get all shortlisted candidates from the separate shortlisted database"""
+    try:
+        from services.shortlisted_db import ShortlistedDatabase
+        shortlisted_db = ShortlistedDatabase()
+        candidates = shortlisted_db.get_all_shortlisted()
+        return {
+            "success": True,
+            "count": len(candidates),
+            "shortlisted_candidates": candidates
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/shortlisted")
+async def clear_shortlisted_candidates():
+    """Clear all shortlisted candidates from the database"""
+    try:
+        from services.shortlisted_db import ShortlistedDatabase
+        shortlisted_db = ShortlistedDatabase()
+        shortlisted_db.clear_all()
+        return {
+            "success": True,
+            "message": "All shortlisted candidates have been cleared"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 def save_candidate_data(db: Session, parsed_data: dict, file_path: str, raw_text: str) -> Candidate:
     """Save parsed candidate data to database"""
     

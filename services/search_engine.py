@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Dict, Any
 from database.models import Candidate, Skill, Education, Experience
+from services.shortlisted_db import ShortlistedDatabase
 import re
 import json
 import os
@@ -10,6 +11,7 @@ class SearchEngine:
     def __init__(self, db: Session):
         self.db = db
         self.job_roles = self._load_job_roles()
+        self.shortlisted_db = ShortlistedDatabase()
     
     def _load_job_roles(self) -> Dict:
         """Load job roles from job_roles.json file"""
@@ -43,23 +45,48 @@ class SearchEngine:
         
         # Calculate match percentages
         results = []
+        shortlisted_for_storage = []
+        
         for candidate in candidates:
             match_percentage = self._calculate_match_percentage(candidate, skill_terms if query else [])
             
             # Filter: Only include candidates with at least 70% match
             if match_percentage >= 70:
+                candidate_skills = [skill.name for skill in candidate.skills]
+                
                 results.append({
                     "id": candidate.id,
                     "name": candidate.name,
                     "email": candidate.email,
-                    "key_skills": [skill.name for skill in candidate.skills[:10]],
+                    "key_skills": candidate_skills[:10],
                     "experience_summary": candidate.experience_summary,
                     "match_percentage": match_percentage,
                     "resume_file_path": candidate.resume_file_path
                 })
+                
+                # Prepare data for shortlisted database
+                experiences = [
+                    {
+                        "duration": exp.duration,
+                        "start_date": exp.start_date,
+                        "end_date": exp.end_date
+                    }
+                    for exp in candidate.experiences
+                ]
+                
+                shortlisted_for_storage.append({
+                    "name": candidate.name,
+                    "experiences": experiences,
+                    "skills": candidate_skills
+                })
         
         # Sort by match percentage
         results.sort(key=lambda x: x["match_percentage"], reverse=True)
+        
+        # Store shortlisted candidates in separate database
+        if shortlisted_for_storage:
+            self.shortlisted_db.store_multiple_candidates(shortlisted_for_storage)
+        
         return results
     
     def _parse_search_query(self, query: str) -> List[str]:
@@ -203,6 +230,8 @@ class SearchEngine:
         all_candidates = self.db.query(Candidate).all()
         
         results = []
+        shortlisted_for_storage = []
+        
         for candidate in all_candidates:
             candidate_skills = [skill.name for skill in candidate.skills]
             
@@ -240,8 +269,28 @@ class SearchEngine:
                     "total_required": total_required,
                     "all_candidate_skills": candidate_skills
                 })
+                
+                # Prepare data for shortlisted database
+                experiences = [
+                    {
+                        "duration": exp.duration,
+                        "start_date": exp.start_date,
+                        "end_date": exp.end_date
+                    }
+                    for exp in candidate.experiences
+                ]
+                
+                shortlisted_for_storage.append({
+                    "name": candidate.name,
+                    "experiences": experiences,
+                    "skills": candidate_skills
+                })
         
         results.sort(key=lambda x: x["match_percentage"], reverse=True)
+        
+        # Store shortlisted candidates in separate database
+        if shortlisted_for_storage:
+            self.shortlisted_db.store_multiple_candidates(shortlisted_for_storage)
         
         return {
             "success": True,

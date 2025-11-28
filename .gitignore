@@ -49,6 +49,8 @@ wheels/
 # Database
 *.db
 *.sqlite3
+resume_parser.db
+shortlisted_resumes.db
 
 # OS
 .DS_Store
