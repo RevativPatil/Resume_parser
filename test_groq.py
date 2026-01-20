@@ -41,6 +41,14 @@ def test_groq_integration():
         - Led migration of legacy systems to Kubernetes on AWS
         - Implemented CI/CD pipelines using Jenkins and Docker
         
+       
+        PROJECTS EXTRACTION RULE:
+       - If the resume does NOT explicitly contain a "Projects" section, 
+         extract project-like content from job experience.
+       - Identify bullet points or sentences describing a specific product/application.
+       - Include project name (if not available, generate a short meaningful title).
+
+
         Software Engineer - Microsoft (2019-2021) 
         - Built full-stack applications with TypeScript and Node.js
         - Designed and implemented RESTful APIs
@@ -53,7 +61,7 @@ def test_groq_integration():
         
         print("\n Testing resume parsing...")
         result = parser.parse_resume(sample_resume)
-        
+
         print(" Parsing Results:")
         print(f"Name: {result.get('name', 'Not found')}")
         print(f"Email: {result.get('email', 'Not found')}")
@@ -61,6 +69,8 @@ def test_groq_integration():
         print(f"Skills: {', '.join(result.get('skills', []))}")
         print(f"Experience entries: {len(result.get('experience', []))}")
         print(f"Education entries: {len(result.get('education', []))}")
+        print(f"Project entries: {len(result.get('projects', []))}")  # 👈 New line
+
         
     except Exception as e:
         print(f" Test failed: {e}")

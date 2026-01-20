@@ -7,12 +7,14 @@ import os
 import shutil
 from typing import List, Optional
 
+
 from config import settings
 from database.models import Base, engine, Candidate, Skill, Education, Experience, SessionLocal
 from services.file_processor import FileProcessor
 from services.llm_parser import LLMResumeParser
 from services.search_engine import SearchEngine
 from utils.helpers import get_db
+from database.models import Project
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
@@ -153,6 +155,17 @@ async def get_resume_details(candidate_id: int, db: Session = Depends(get_db)):
                         "end_date": e.end_date
                     } for e in candidate.experiences
                 ],
+                "projects": [
+                    {
+                        "title": p.title,
+                        "description": p.description,
+                        "technologies_used": p.technologies_used,
+                        "github_link": p.github_link,
+                        "role": p.role,
+                        "duration": p.duration
+
+                    } for p in candidate.projects
+                ],
                 "resume_file_path": candidate.resume_file_path,
                 "filename": os.path.basename(candidate.resume_file_path) if candidate.resume_file_path else ""
             }
@@ -213,7 +226,8 @@ async def get_all_candidates(db: Session = Depends(get_db)):
                     "name": c.name,
                     "email": c.email,
                     "skills": [s.name for s in c.skills],
-                    "experience_summary": c.experience_summary
+                    "experience_summary": c.experience_summary,
+                    "projects": [p.title for p in c.projects]
                 } for c in candidates
             ]
         }
@@ -283,6 +297,8 @@ def save_candidate_data(db: Session, parsed_data: dict, file_path: str, raw_text
     
     # Create or update candidate
     candidate = db.query(Candidate).filter(Candidate.email == parsed_data['email']).first()
+    is_existing_candidate = candidate is not None
+    
     if not candidate:
         candidate = Candidate(
             name=parsed_data.get('name', ''),
@@ -294,6 +310,20 @@ def save_candidate_data(db: Session, parsed_data: dict, file_path: str, raw_text
             experience_summary=parsed_data.get('experience_summary', '')
         )
         db.add(candidate)
+        db.flush()
+    else:
+        # Update existing candidate's basic info
+        candidate.name = parsed_data.get('name', '')
+        candidate.phone = parsed_data.get('phone', '')
+        candidate.location = parsed_data.get('location', '')
+        candidate.raw_text = raw_text
+        candidate.resume_file_path = file_path
+        candidate.experience_summary = parsed_data.get('experience_summary', '')
+        
+        # Clear existing education, experience, and projects to avoid duplicates
+        db.query(Education).filter(Education.candidate_id == candidate.id).delete()
+        db.query(Experience).filter(Experience.candidate_id == candidate.id).delete()
+        db.query(Project).filter(Project.candidate_id == candidate.id).delete()
         db.flush()
     
     # Process skills
@@ -336,6 +366,22 @@ def save_candidate_data(db: Session, parsed_data: dict, file_path: str, raw_text
         )
         db.add(experience)
     
+    db.commit()
+    db.refresh(candidate)
+
+
+    for project_data in parsed_data.get('projects', []):
+        project = Project(
+            candidate_id=candidate.id,
+            title=project_data.get('title', ''),
+            description=project_data.get('description', ''),
+            technologies_used=project_data.get('technologies_used', ''),
+            github_link=project_data.get('github_link', ''),
+            role=project_data.get('role', ''),
+            duration=project_data.get('duration', '')
+        )
+        db.add(project)
+
     db.commit()
     db.refresh(candidate)
     return candidate

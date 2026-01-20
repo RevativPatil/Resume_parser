@@ -102,6 +102,18 @@ class GroqResumeParser:
                 }}
             ],
             "experience_summary": "string"
+
+            "projects": [
+               {{
+                   "title": "RAG Chatbot for Internal Knowledge Search",
+                   "description": "Built a Generative AI chatbot using LangChain, FAISS... ",
+                   "technologies_used": "LangChain, FastAPI, FAISS, Azure OpenAI",
+                   "github_link": "",
+                   "role": "Developer",
+                   "duration": "June 2023 - Present"
+               }}
+]
+
         }}
 
         If you cannot find certain information, use empty strings or empty arrays.
@@ -138,7 +150,8 @@ class GroqResumeParser:
             'skills': [],
             'education': [],
             'experience': [],
-            'experience_summary': ''
+            'experience_summary': '',
+            'projects': []
         }
         
         for field, default in required_fields.items():
@@ -152,6 +165,8 @@ class GroqResumeParser:
             data['education'] = []
         if not isinstance(data['experience'], list):
             data['experience'] = []
+        if not isinstance(data['projects'], list):
+            data['projects'] = []
             
         # Clean skills - remove empty strings, duplicates
         data['skills'] = [skill for skill in data['skills'] if skill and isinstance(skill, str)]
@@ -169,7 +184,8 @@ class GroqResumeParser:
             "skills": [],
             "education": [],
             "experience": [],
-            "experience_summary": ""
+            "experience_summary": "",
+            "projects": []
         }
 
     def _get_fallback_response(self, text: str) -> Dict[str, Any]:

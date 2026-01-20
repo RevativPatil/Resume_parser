@@ -142,12 +142,12 @@ async function searchBySkills() {
 
     try {
         const normalizedQuery = query.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-        
-        const matchingRole = jobRoles.find(role => 
-            role.key === normalizedQuery || 
+
+        const matchingRole = jobRoles.find(role =>
+            role.key === normalizedQuery ||
             role.title.toLowerCase() === query.toLowerCase()
         );
-        
+
         if (matchingRole) {
             const response = await fetch(`/api/search-by-role?role=${matchingRole.key}`);
             const result = await response.json();
@@ -170,62 +170,6 @@ async function searchBySkills() {
     } catch (error) {
         searchResults.innerHTML = `<div class="status-error status-message">Search error: ${error.message}</div>`;
     }
-}
-
-function displayJobRoleResults(result) {
-    const searchResults = document.getElementById('searchResults');
-    let html = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">
-                    <strong>Role:</strong> ${result.job_role}<br>
-                    <strong>Required Skills:</strong> ${result.required_skills.length}
-                </div>`;
-
-    result.candidates.forEach(candidate => {
-        const matchPercentage = candidate.match_percentage || 0;
-        const matchedSkills = candidate.matched_skills || [];
-        const missingSkills = candidate.missing_skills || [];
-        
-        let matchColor = '#ef4444';
-        if (matchPercentage >= 70) matchColor = '#22c55e';
-        else if (matchPercentage >= 40) matchColor = '#f59e0b';
-        
-        html += `
-            <div class="candidate-item" onclick="selectCandidate(${candidate.id})" style="border-left: 4px solid ${matchColor};">
-                <div class="candidate-name">${candidate.name}</div>
-                <div class="candidate-email">${candidate.email}</div>
-                <div style="color: ${matchColor}; font-weight: 600; margin: 8px 0; font-size: 16px;">Match: ${matchPercentage}%</div>
-                <div style="margin: 8px 0; font-size: 12px;">
-                    <div style="color: #22c55e; margin-bottom: 4px;">✓ Matched (${candidate.matched_count}/${candidate.total_required}): ${matchedSkills.slice(0, 3).join(', ')}${matchedSkills.length > 3 ? '...' : ''}</div>
-                    <div style="color: #ef4444;">✗ Missing (${missingSkills.length}): ${missingSkills.slice(0, 3).join(', ')}${missingSkills.length > 3 ? '...' : ''}</div>
-                </div>
-            </div>
-        `;
-    });
-
-    searchResults.innerHTML = html;
-}
-
-function displaySearchResults(results) {
-    const searchResults = document.getElementById('searchResults');
-    let html = '';
-
-    results.forEach(candidate => {
-        const skillsArray = candidate.key_skills || [];
-        html += `
-            <div class="candidate-item" onclick="selectCandidate(${candidate.id})">
-                <div class="candidate-name">${candidate.name}</div>
-                <div class="candidate-email">${candidate.email}</div>
-                ${candidate.match_percentage ? `<div style="color: #48bb78; font-weight: 600; margin-bottom: 8px;">Match: ${candidate.match_percentage}%</div>` : ''}
-                <div class="candidate-skills">
-                    ${skillsArray.slice(0, 5).map(skill => 
-                        `<span class="skill-badge">${skill}</span>`
-                    ).join('')}
-                    ${skillsArray.length > 5 ? `<span class="skill-badge">+${skillsArray.length - 5} more</span>` : ''}
-                </div>
-            </div>
-        `;
-    });
-
-    searchResults.innerHTML = html;
 }
 
 async function loadResumeList() {
@@ -287,90 +231,68 @@ async function selectCandidate(candidateId) {
 function displayResumeDocument(candidateId) {
     const documentViewer = document.getElementById('documentViewer');
     const fileUrl = `/api/resume/file/${candidateId}`;
-    
+
     documentViewer.innerHTML = `
-        <div style="width: 100%; height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f5f5f5;">
-            <iframe 
-                id="pdfFrame" 
-                src="${fileUrl}#toolbar=1&navpanes=0&scrollbar=1"
-                frameborder="0"
-                style="width: 100%; height: 100%; border: none; border-radius: 8px;">
-            </iframe>
-            <div style="margin-top: 10px; text-align: center; width: 100%;">
-                <a href="${fileUrl}" target="_blank" style="color: #6366f1; text-decoration: none; font-size: 12px;">
-                    <i class="fas fa-download"></i> Download Resume
-                </a>
-            </div>
-        </div>
+        <iframe src="${fileUrl}" style="width: 100%; height: 600px; border-radius: 8px;"></iframe>
+        <a href="${fileUrl}" target="_blank" style="display:block; margin-top:10px; text-align:center;">Download Resume</a>
     `;
 }
 
 function displayCandidateInfo(candidate) {
     const extractedInfo = document.getElementById('extractedInfo');
-    
+
     let html = `
-        <div class="info-section">
-            <div class="info-section-title"><i class="fas fa-user"></i> Personal Information</div>
-            <div class="info-item">
-                <div class="info-label">Name</div>
-                <div class="info-value">${candidate.name || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Email</div>
-                <div class="info-value">${candidate.email || 'N/A'}</div>
-            </div>
-            ${candidate.phone ? `
-            <div class="info-item">
-                <div class="info-label">Phone</div>
-                <div class="info-value">${candidate.phone}</div>
-            </div>
-            ` : ''}
-            ${candidate.location ? `
-            <div class="info-item">
-                <div class="info-label">Location</div>
-                <div class="info-value">${candidate.location}</div>
-            </div>
-            ` : ''}
+        <div class="info-section"><h3>Personal Info</h3>
+            <p><strong>Name:</strong> ${candidate.name || "N/A"}</p>
+            <p><strong>Email:</strong> ${candidate.email || "N/A"}</p>
+            <p><strong>Phone:</strong> ${candidate.phone || "N/A"}</p>
+            <p><strong>Location:</strong> ${candidate.location || "N/A"}</p>
         </div>
     `;
 
-    if (candidate.skills && candidate.skills.length > 0) {
+    if (candidate.skills?.length > 0) {
         html += `
-            <div class="info-section">
-                <div class="info-section-title"><i class="fas fa-code"></i> Skills</div>
+            <div class="info-section"><h3>Skills</h3>
                 <div class="skills-grid">
-                    ${candidate.skills.map(skill => 
-                        `<span class="skill-tag">${skill.name}</span>`
-                    ).join('')}
+                    ${candidate.skills.map(s => `<span class="skill-tag">${s.name}</span>`).join('')}
                 </div>
             </div>
         `;
     }
 
-    if (candidate.experience && candidate.experience.length > 0) {
+    if (candidate.experience?.length > 0) {
         html += `
-            <div class="info-section">
-                <div class="info-section-title"><i class="fas fa-briefcase"></i> Work Experience</div>
+            <div class="info-section"><h3>Work Experience</h3>
                 ${candidate.experience.map(exp => `
-                    <div class="experience-item">
-                        <div class="item-title">${exp.job_title || 'Position'}</div>
-                        <div class="item-subtitle"><strong>${exp.company || 'Company'}</strong> ${exp.duration ? `• ${exp.duration}` : ''}</div>
-                        ${exp.description ? `<div class="item-detail">${exp.description}</div>` : ''}
-                    </div>
+                    <p><strong>${exp.job_title}</strong> - ${exp.company} (${exp.duration})</p>
                 `).join('')}
             </div>
         `;
     }
 
-    if (candidate.education && candidate.education.length > 0) {
+    if (candidate.education?.length > 0) {
+        html += `
+            <div class="info-section"><h3>Education</h3>
+                ${candidate.education.map(edu => `
+                    <p><strong>${edu.degree}</strong> - ${edu.institution} (${edu.year})</p>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    /* 🔥 NEW — SHOW PROJECTS HERE */
+    if (candidate.projects && candidate.projects.length > 0) {
         html += `
             <div class="info-section">
-                <div class="info-section-title"><i class="fas fa-graduation-cap"></i> Education</div>
-                ${candidate.education.map(edu => `
-                    <div class="education-item">
-                        <div class="item-title">${edu.degree || 'Degree'}</div>
-                        <div class="item-subtitle">${edu.institution || 'Institution'} ${edu.year ? `• ${edu.year}` : ''}</div>
-                        ${edu.field_of_study ? `<div class="item-detail">Field: ${edu.field_of_study}</div>` : ''}
+                <div class="info-section-title"><i class="fas fa-lightbulb"></i> Projects</div>
+                ${candidate.projects.map(p => `
+                    <div class="project-item">
+                        <div class="item-title">${p.title || 'Project'}</div>
+                        ${p.description ? `<div class="item-detail">${p.description}</div>` : ''}
+                        ${p.technologies_used ? `<div class="item-detail"><strong>Tech:</strong> ${p.technologies_used}</div>` : ''}
+                        ${p.role ? `<div class="item-detail"><strong>Role:</strong> ${p.role}</div>` : ''}
+                        ${p.duration ? `<div class="item-detail"><strong>Duration:</strong> ${p.duration}</div>` : ''}
+                        ${p.github_link ? `<a href="${p.github_link}" target="_blank" class="gh-link">GitHub Repo</a>` : ''}
                     </div>
                 `).join('')}
             </div>
@@ -383,15 +305,9 @@ function displayCandidateInfo(candidate) {
 function showStatus(message, type) {
     const statusDiv = document.getElementById('uploadStatus');
     statusDiv.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
-    
-    if (type === 'success' || type === 'error') {
-        setTimeout(() => {
-            statusDiv.innerHTML = '';
-        }, 5000);
-    }
+    setTimeout(() => statusDiv.innerHTML = '', 3000);
 }
 
 function showLoading(show) {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    loadingOverlay.style.display = show ? 'flex' : 'none';
+    document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
 }

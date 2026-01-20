@@ -33,6 +33,8 @@ class Candidate(Base):
     skills = relationship("Skill", secondary=candidate_skills, back_populates="candidates")
     education = relationship("Education", back_populates="candidate")
     experiences = relationship("Experience", back_populates="candidate")
+    projects = relationship("Project", back_populates="candidate")
+
 
 class Skill(Base):
     __tablename__ = "skills"
@@ -69,6 +71,20 @@ class Experience(Base):
     end_date = Column(String)
     
     candidate = relationship("Candidate", back_populates="experiences")
+
+class Project(Base):
+    __tablename__ = "projects"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey('candidates.id'))
+    title = Column(String)
+    description = Column(Text)
+    technologies_used = Column(String)  # comma-separated or JSON later
+    github_link = Column(String)
+    role = Column(String)
+    duration = Column(String)
+    
+    candidate = relationship("Candidate", back_populates="projects")
 
 # Create engine and session
 engine = create_engine(settings.DATABASE_URL)

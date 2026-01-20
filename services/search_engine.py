@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Dict, Any
-from database.models import Candidate, Skill, Education, Experience
+from database.models import Candidate, Skill, Education, Experience, Project
 from services.shortlisted_db import ShortlistedDatabase
 import re
 import json
@@ -59,6 +59,7 @@ class SearchEngine:
                     "name": candidate.name,
                     "email": candidate.email,
                     "key_skills": candidate_skills[:10],
+                    "projects": [p.title for p in candidate.projects],
                     "experience_summary": candidate.experience_summary,
                     "match_percentage": match_percentage,
                     "resume_file_path": candidate.resume_file_path
@@ -113,7 +114,16 @@ class SearchEngine:
             )
         
         # Join and apply OR filter
-        query = query.join(Candidate.skills).filter(or_(*skill_filters))
+        query = query.join(Candidate.skills, isouter=True)\
+             .join(Candidate.projects, isouter=True)\
+             .filter(
+                or_(
+                    *skill_filters,
+                    *[Project.title.ilike(f"%{term}%") for term in skill_terms],
+                    *[Project.technologies_used.ilike(f"%{term}%") for term in skill_terms]
+                )
+             )
+
         
         return query.distinct()
     
@@ -233,7 +243,11 @@ class SearchEngine:
         shortlisted_for_storage = []
         
         for candidate in all_candidates:
-            candidate_skills = [skill.name for skill in candidate.skills]
+            candidate_skills = (
+                [skill.name for skill in candidate.skills] +
+                [p.technologies_used for p in candidate.projects if p.technologies_used] 
+)
+
             
             matched_skills = []
             missing_skills = []

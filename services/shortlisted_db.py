@@ -6,18 +6,10 @@ from datetime import datetime
 
 class ShortlistedDatabase:
     MONTH_MAP = {
-        'jan': 1, 'january': 1,
-        'feb': 2, 'february': 2,
-        'mar': 3, 'march': 3,
-        'apr': 4, 'april': 4,
-        'may': 5,
-        'jun': 6, 'june': 6,
-        'jul': 7, 'july': 7,
-        'aug': 8, 'august': 8,
-        'sep': 9, 'sept': 9, 'september': 9,
-        'oct': 10, 'october': 10,
-        'nov': 11, 'november': 11,
-        'dec': 12, 'december': 12
+        'jan': 1, 'january': 1, 'feb': 2, 'february': 2, 'mar': 3, 'march': 3,
+        'apr': 4, 'april': 4, 'may': 5, 'jun': 6, 'june': 6, 'jul': 7, 'july': 7,
+        'aug': 8, 'august': 8, 'sep': 9, 'sept': 9, 'september': 9, 
+        'oct': 10, 'october': 10, 'nov': 11, 'november': 11, 'dec': 12, 'december': 12
     }
     
     def __init__(self, db_path: str = "shortlisted_resumes.db"):
@@ -25,176 +17,143 @@ class ShortlistedDatabase:
         self._create_table_if_not_exists()
     
     def _create_table_if_not_exists(self):
-        """Create the shortlisted_candidates table if it doesn't exist"""
+        """Create table if missing and add projects column if needed"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS shortlisted_candidates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                candidate_name TEXT NOT NULL,
-                work_experience_years REAL DEFAULT 0.0,
-                skills TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(candidate_name, skills)
-            )
+        CREATE TABLE IF NOT EXISTS shortlisted_candidates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_name TEXT NOT NULL,
+            work_experience_years REAL DEFAULT 0.0,
+            skills TEXT NOT NULL,
+            projects TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(candidate_name, skills, projects)
+        )
         """)
+
+        # Check if "projects" column exists; if missing, add it
+        cursor.execute("PRAGMA table_info(shortlisted_candidates)")
+        columns = [col[1] for col in cursor.fetchall()]
         
+        if "projects" not in columns:
+            cursor.execute("ALTER TABLE shortlisted_candidates ADD COLUMN projects TEXT")
+
         conn.commit()
         conn.close()
-    
-    def _normalize_skills(self, skills: List[str]) -> str:
-        """Normalize and sort skills for consistent storage and deduplication"""
-        if not skills:
+
+    def _normalize_list(self, items: List[str]) -> str:
+        """Normalize and convert list to comma-separated lowercase string"""
+        if not items:
             return ""
-        normalized = [skill.strip().lower() for skill in skills if skill and skill.strip()]
-        normalized = sorted(set(normalized))
-        return ", ".join(normalized)
-    
+        cleaned = sorted({i.lower().strip() for i in items if i and i.strip()})
+        return ", ".join(cleaned)
+
     def _parse_date(self, date_str: str) -> Tuple[int, int]:
-        """Parse a date string and return (year, month) tuple"""
+        """Extract month & year"""
         if not date_str:
             return (0, 0)
-        
+
         date_str = date_str.lower().strip()
         
-        if 'present' in date_str or 'current' in date_str or 'now' in date_str:
+        if any(word in date_str for word in ["present", "current", "now"]):
             now = datetime.now()
-            return (now.year, now.month)
+            return now.year, now.month
         
-        year = 0
-        month = 1
+        year = int(re.search(r'(\d{4})', date_str).group(1)) if re.search(r'(\d{4})', date_str) else 0
         
-        year_match = re.search(r'(\d{4})', date_str)
-        if year_match:
-            year = int(year_match.group(1))
-        
-        for month_name, month_num in self.MONTH_MAP.items():
-            if month_name in date_str:
-                month = month_num
-                break
-        
-        month_num_match = re.search(r'\b(\d{1,2})[/-]', date_str)
-        if month_num_match:
-            potential_month = int(month_num_match.group(1))
-            if 1 <= potential_month <= 12:
-                month = potential_month
-        
+        month = next((num for name, num in self.MONTH_MAP.items() if name in date_str), 1)
+
         return (year, month)
-    
+
     def _calculate_work_experience_years(self, experiences: List[Dict]) -> float:
-        """Calculate total work experience in years from experience data"""
+        """Calculate work experience"""
         total_months = 0
-        
+
         for exp in experiences:
-            duration = exp.get('duration', '')
-            months_from_duration = 0
-            
+            duration = exp.get("duration", "")
             if duration:
-                years = 0
-                months = 0
-                
-                year_match = re.search(r'(\d+)\s*(?:year|yr)s?', duration, re.IGNORECASE)
-                if year_match:
-                    years = int(year_match.group(1))
-                
-                month_match = re.search(r'(\d+)\s*(?:month|mo)s?', duration, re.IGNORECASE)
-                if month_match:
-                    months = int(month_match.group(1))
-                
-                months_from_duration = (years * 12) + months
-            
-            if months_from_duration > 0:
-                total_months += months_from_duration
-            else:
-                start_date = exp.get('start_date', '')
-                end_date = exp.get('end_date', '')
-                
-                if start_date:
-                    start_year, start_month = self._parse_date(start_date)
-                    
-                    if end_date:
-                        end_year, end_month = self._parse_date(end_date)
-                    else:
-                        now = datetime.now()
-                        end_year, end_month = now.year, now.month
-                    
-                    if start_year > 0 and end_year > 0:
-                        months_diff = (end_year - start_year) * 12 + (end_month - start_month)
-                        if months_diff > 0:
-                            total_months += months_diff
-        
-        return round(total_months / 12, 1) if total_months > 0 else 0.0
-    
-    def store_shortlisted_candidate(self, candidate_name: str, experiences: List[Dict], skills: List[str]) -> bool:
-        """Store a shortlisted candidate in the database"""
+                years = int(re.search(r'(\d+)\s*year', duration, re.IGNORECASE).group(1)) if re.search(r'(\d+)\s*year', duration, re.IGNORECASE) else 0
+                months = int(re.search(r'(\d+)\s*month', duration, re.IGNORECASE).group(1)) if re.search(r'(\d+)\s*month', duration, re.IGNORECASE) else 0
+                total_months += years * 12 + months
+                continue
+
+            start_y, start_m = self._parse_date(exp.get("start_date", ""))
+            end_y, end_m = self._parse_date(exp.get("end_date", "")) if exp.get("end_date") else (datetime.now().year, datetime.now().month)
+
+            if start_y > 0:
+                total_months += max(0, (end_y - start_y) * 12 + (end_m - start_m))
+
+        return round(total_months / 12, 1)
+
+    def store_shortlisted_candidate(self, candidate_name, experiences, skills, projects):
+        """Save candidate with projects"""
         try:
-            work_experience_years = self._calculate_work_experience_years(experiences)
-            skills_str = self._normalize_skills(skills)
-            candidate_name_normalized = candidate_name.strip() if candidate_name else ""
-            
-            if not candidate_name_normalized:
+            if not candidate_name:
                 return False
             
+            work_years = self._calculate_work_experience_years(experiences)
+            skills_str = self._normalize_list(skills)
+            projects_str = self._normalize_list(projects)
+
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT OR IGNORE INTO shortlisted_candidates 
-                (candidate_name, work_experience_years, skills)
-                VALUES (?, ?, ?)
-            """, (candidate_name_normalized, work_experience_years, skills_str))
-            
+                INSERT OR IGNORE INTO shortlisted_candidates
+                (candidate_name, work_experience_years, skills, projects)
+                VALUES (?, ?, ?, ?)
+            """, (candidate_name.strip(), work_years, skills_str, projects_str))
+
             conn.commit()
             conn.close()
-            
             return True
+        
         except Exception as e:
             print(f"Error storing shortlisted candidate: {e}")
             return False
-    
+
     def store_multiple_candidates(self, candidates: List[Dict]) -> int:
-        """Store multiple shortlisted candidates at once"""
-        stored_count = 0
-        
-        for candidate in candidates:
-            name = candidate.get('name', '')
-            experiences = candidate.get('experiences', [])
-            skills = candidate.get('skills', [])
-            
-            if name:
-                if self.store_shortlisted_candidate(name, experiences, skills):
-                    stored_count += 1
-        
-        return stored_count
-    
+        """Store many resumes"""
+        count = 0
+        for c in candidates:
+            if self.store_shortlisted_candidate(
+                c.get("name", ""), 
+                c.get("experiences", []), 
+                c.get("skills", []),
+                c.get("projects", [])
+            ):
+                count += 1
+        return count
+
     def get_all_shortlisted(self) -> List[Dict]:
-        """Get all shortlisted candidates"""
+        """Return all shortlisted"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute("""
-            SELECT id, candidate_name, work_experience_years, skills, created_at 
-            FROM shortlisted_candidates
-            ORDER BY created_at DESC
+            SELECT id, candidate_name, work_experience_years, skills, projects, created_at 
+            FROM shortlisted_candidates ORDER BY created_at DESC
         """)
         
         rows = cursor.fetchall()
         conn.close()
-        
+
         return [
             {
                 "id": row[0],
                 "candidate_name": row[1],
                 "work_experience_years": row[2],
                 "skills": row[3],
-                "created_at": row[4]
+                "projects": row[4],
+                "created_at": row[5]
             }
             for row in rows
         ]
-    
-    def clear_all(self) -> bool:
-        """Clear all shortlisted candidates"""
+
+    def clear_all(self):
+        """Delete all rows"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -203,5 +162,5 @@ class ShortlistedDatabase:
             conn.close()
             return True
         except Exception as e:
-            print(f"Error clearing shortlisted candidates: {e}")
+            print(f"Error clearing shortlist: {e}")
             return False
